@@ -461,12 +461,26 @@ console.log("🔊 Voice channel update step reached.");
 );
       if (UPDATE_VOICE_CHANNEL_ID) {
   try {
+    console.log("🔊 Fetching voice channel...");
+
     const voiceChannel = await client.channels.fetch(
       UPDATE_VOICE_CHANNEL_ID
     );
 
-    if (voiceChannel) {
+    console.log(
+      "🔊 Channel found:",
+      voiceChannel ? voiceChannel.name : "NO CHANNEL"
+    );
+
+    if (!voiceChannel) {
+      console.error("❌ Discord returned no channel.");
+    } else if (!voiceChannel.isVoiceBased()) {
+      console.error(
+        "❌ The configured channel is not a voice channel."
+      );
+    } else {
       await voiceChannel.setName("🆕 Reset's Teletubbies");
+
       console.log(
         "🔊 Updated Reset's Teletubbies voice channel."
       );
@@ -477,6 +491,7 @@ console.log("🔊 Voice channel update step reached.");
       error.message
     );
   }
+}
 }
 
 previous = {
