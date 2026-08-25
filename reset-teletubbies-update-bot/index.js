@@ -377,7 +377,8 @@ async function checkForUpdate() {
         loadState();
 
       if (savedState?.game) {
-        previous = {
+        if (checking)
+          previous = {
           ...savedState.game,
           thumbnail:
             savedState.thumbnail
