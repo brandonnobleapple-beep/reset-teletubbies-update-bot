@@ -439,28 +439,44 @@ async function checkForUpdate() {
         "🚨 NEW ROBLOX UPDATE DETECTED!"
       );
 
-      try {
-        await sendShutdownAnnouncement(
-          game,
-          changes,
-          thumbnail
-        );
-      } catch (error) {
-        console.error(
-          "❌ Could not send announcement:",
-          error.message
-        );
-      }
+   try {
+  await sendShutdownAnnouncement(
+    game,
+    changes,
+    thumbnail
+  );
+} catch (error) {
+  console.error(
+    "❌ Could not send announcement:",
+    error.message
+  );
+}
 
-      previous = {
-        ...game,
-        thumbnail
-      };
+// Update the Reset's Teletubbies voice channel
+if (UPDATE_VOICE_CHANNEL_ID) {
+  try {
+    const voiceChannel = await client.channels.fetch(
+      UPDATE_VOICE_CHANNEL_ID
+    );
 
-      saveState(
-        game,
-        thumbnail
+    if (voiceChannel) {
+      await voiceChannel.setName("🆕 Reset's Teletubbies");
+      console.log(
+        "🔊 Updated Reset's Teletubbies voice channel."
       );
+    }
+  } catch (error) {
+    console.error(
+      "❌ Could not update voice channel:",
+      error.message
+    );
+  }
+}
+
+previous = {
+  ...game,
+  thumbnail
+};
 
       console.log(
         `💾 Recorded update timestamp: ${game.updated}`
