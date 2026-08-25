@@ -1,5 +1,5 @@
 services:
-  - type: worker
+  - type: web
     name: reset-teletubbies-update-bot
     runtime: node
     buildCommand: npm install
