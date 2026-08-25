@@ -16,7 +16,8 @@ const ROBLOX_UNIVERSE_ID =
 const PING_ROLE_ID = process.env.PING_ROLE_ID || "";
 const POLL_INTERVAL_MS =
   Number(process.env.POLL_INTERVAL_MS || 300000);
-
+const UPDATE_VOICE_CHANNEL_ID =
+  process.env.UPDATE_VOICE_CHANNEL_ID || "";
 const STATE_FILE = path.join(__dirname, "game-state.json");
 
 const ROBLOX_GAME_URL =
