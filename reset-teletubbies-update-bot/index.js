@@ -9,20 +9,14 @@ const fs = require("fs");
 const path = require("path");
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const ANNOUNCEMENT_CHANNEL_ID =
-  process.env.ANNOUNCEMENT_CHANNEL_ID;
-
+const ANNOUNCEMENT_CHANNEL_ID = process.env.ANNOUNCEMENT_CHANNEL_ID;
 const ROBLOX_UNIVERSE_ID =
   process.env.ROBLOX_UNIVERSE_ID || "7498394551";
-
-const PING_ROLE_ID =
-  process.env.PING_ROLE_ID || "";
-
+const PING_ROLE_ID = process.env.PING_ROLE_ID || "";
 const POLL_INTERVAL_MS =
   Number(process.env.POLL_INTERVAL_MS || 300000);
 
-const STATE_FILE =
-  path.join(__dirname, "game-state.json");
+const STATE_FILE = path.join(__dirname, "game-state.json");
 
 const ROBLOX_GAME_URL =
   "https://www.roblox.com/games/129724410007188/Resets-Teletubbies-1997";
@@ -31,7 +25,6 @@ if (!DISCORD_TOKEN || !ANNOUNCEMENT_CHANNEL_ID) {
   console.error(
     "❌ Missing DISCORD_TOKEN or ANNOUNCEMENT_CHANNEL_ID."
   );
-
   process.exit(1);
 }
 
@@ -45,33 +38,21 @@ let updateTimer = null;
 let watchdogTimer = null;
 
 let lastSuccessfulCheck = Date.now();
-let lastDiscordReady = Date.now();
 
 // --------------------------------------------------
-// Global crash protection
+// Crash protection
 // --------------------------------------------------
 
 process.on("uncaughtException", error => {
-  console.error(
-    "🚨 UNCAUGHT EXCEPTION:",
-    error
-  );
-
-  /*
-   * Do not immediately terminate the process.
-   * Give Render and Discord.js a chance to recover.
-   */
+  console.error("🚨 UNCAUGHT EXCEPTION:", error);
 });
 
 process.on("unhandledRejection", error => {
-  console.error(
-    "🚨 UNHANDLED PROMISE REJECTION:",
-    error
-  );
+  console.error("🚨 UNHANDLED PROMISE REJECTION:", error);
 });
 
 // --------------------------------------------------
-// Persistent state
+// State storage
 // --------------------------------------------------
 
 function loadState() {
@@ -80,16 +61,12 @@ function loadState() {
       return null;
     }
 
-    const data =
-      fs.readFileSync(
-        STATE_FILE,
-        "utf8"
-      );
-
-    return JSON.parse(data);
+    return JSON.parse(
+      fs.readFileSync(STATE_FILE, "utf8")
+    );
   } catch (error) {
     console.error(
-      "⚠️ Could not load saved game state:",
+      "⚠️ Could not load saved state:",
       error.message
     );
 
@@ -102,6 +79,7 @@ function saveState(game, thumbnail) {
     const state = {
       game,
       thumbnail,
+      lastAnnouncedUpdated: game.updated || null,
       savedAt: new Date().toISOString()
     };
 
@@ -112,7 +90,7 @@ function saveState(game, thumbnail) {
     );
   } catch (error) {
     console.error(
-      "⚠️ Could not save game state:",
+      "⚠️ Could not save state:",
       error.message
     );
   }
@@ -128,13 +106,12 @@ async function getRobloxGame() {
       ROBLOX_UNIVERSE_ID
     )}`;
 
-  const response =
-    await fetch(url, {
-      headers: {
-        "User-Agent":
-          "Reset-Teletubbies-Update-Bot/3.0"
-      }
-    });
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent":
+        "Reset-Teletubbies-Update-Bot/4.0"
+    }
+  });
 
   if (!response.ok) {
     throw new Error(
@@ -142,11 +119,8 @@ async function getRobloxGame() {
     );
   }
 
-  const json =
-    await response.json();
-
-  const game =
-    json.data?.[0];
+  const json = await response.json();
+  const game = json.data?.[0];
 
   if (!game) {
     throw new Error(
@@ -163,20 +137,15 @@ async function getThumbnail(universeId) {
       universeId
     )}&size=512x512&format=Png&isCircular=false`;
 
-  const response =
-    await fetch(url);
+  const response = await fetch(url);
 
   if (!response.ok) {
     return null;
   }
 
-  const json =
-    await response.json();
+  const json = await response.json();
 
-  return (
-    json.data?.[0]?.imageUrl ||
-    null
-  );
+  return json.data?.[0]?.imageUrl || null;
 }
 
 // --------------------------------------------------
@@ -195,10 +164,7 @@ function getChanges(
     return changes;
   }
 
-  if (
-    oldGame.name !==
-    newGame.name
-  ) {
+  if (oldGame.name !== newGame.name) {
     changes.push({
       type: "name",
       title: "📝 Name Changed",
@@ -220,15 +186,12 @@ function getChanges(
     });
   }
 
-  if (
-    oldGame.updated !==
-    newGame.updated
-  ) {
+  if (oldGame.updated !== newGame.updated) {
     changes.push({
       type: "updated",
-      title: "🕐 Game Updated",
+      title: "🕐 Roblox Game Updated",
       value:
-        "Roblox reports that the game was updated."
+        "Roblox reports that the game has been updated."
     });
   }
 
@@ -245,10 +208,7 @@ function getChanges(
     });
   }
 
-  if (
-    oldGame.playing !==
-    newGame.playing
-  ) {
+  if (oldGame.playing !== newGame.playing) {
     changes.push({
       type: "players",
       title: "👥 Player Count Changed",
@@ -258,10 +218,7 @@ function getChanges(
     });
   }
 
-  if (
-    oldGame.visits !==
-    newGame.visits
-  ) {
+  if (oldGame.visits !== newGame.visits) {
     changes.push({
       type: "visits",
       title: "📈 Visit Count Changed",
@@ -271,10 +228,7 @@ function getChanges(
     });
   }
 
-  if (
-    oldThumbnail !==
-    newThumbnail
-  ) {
+  if (oldThumbnail !== newThumbnail) {
     changes.push({
       type: "thumbnail",
       title: "🖼️ Thumbnail Changed",
@@ -287,10 +241,10 @@ function getChanges(
 }
 
 // --------------------------------------------------
-// Discord announcement
+// SERVER SHUTDOWN announcement
 // --------------------------------------------------
 
-async function sendAnnouncement(
+async function sendShutdownAnnouncement(
   game,
   changes,
   thumbnailUrl
@@ -309,51 +263,41 @@ async function sendAnnouncement(
     );
   }
 
-  const isMajorUpdate =
-    changes.some(change =>
-      [
-        "updated",
-        "name",
-        "description",
-        "place"
-      ].includes(change.type)
-    );
+  const updatedTimestamp = game.updated
+    ? Math.floor(
+        new Date(game.updated).getTime() / 1000
+      )
+    : null;
 
   const ping =
-    isMajorUpdate &&
     PING_ROLE_ID
       ? `<@&${PING_ROLE_ID}>`
       : "";
 
-  const changeText =
-    changes
-      .map(change =>
-        `**${change.title}**\n${change.value}`
-      )
-      .join("\n\n");
-
-  const updatedTimestamp =
-    game.updated
-      ? Math.floor(
-          new Date(
-            game.updated
-          ).getTime() / 1000
-        )
-      : null;
+  const changeText = changes
+    .map(change =>
+      `${change.title}\n${change.value}`
+    )
+    .join("\n\n");
 
   const embed =
     new EmbedBuilder()
       .setTitle(
-        "🚨 Reset's Teletubbies 1997 — Update Detected!"
+        "🔴 SERVER SHUTDOWN — Roblox Update Detected"
       )
       .setDescription(
-        `A change has been detected in **Reset's Teletubbies 1997**.\n\n${changeText}`
+        "🦁🐻 **Reset's Teletubbies 1997 has been updated!**\n\n" +
+        "The Roblox game/server may be temporarily unavailable while the new update is being released.\n\n" +
+        "### 📋 Changes Detected\n" +
+        changeText
       )
       .addFields(
         {
-          name: "🎮 Game",
+          name: "🕐 Roblox Updated",
           value:
-            `[Reset's Teletubbies 1997](${ROBLOX_GAME_URL})`,
+            updatedTimestamp
+              ? `<t:${updatedTimestamp}:F>\n(<t:${updatedTimestamp}:R>)`
+              : "Unknown",
           inline: true
         },
         {
@@ -363,12 +307,9 @@ async function sendAnnouncement(
           inline: true
         },
         {
-          name: "🕐 Roblox Updated",
+          name: "🎮 Game",
           value:
-            updatedTimestamp
-              ? `<t:${updatedTimestamp}:F>\n(<t:${updatedTimestamp}:R>)`
-              : "Unknown",
-          inline: false
+            `[Play Reset's Teletubbies 1997](${ROBLOX_GAME_URL})`
         }
       )
       .setFooter({
@@ -384,18 +325,17 @@ async function sendAnnouncement(
   }
 
   await channel.send({
-    content:
-      ping || undefined,
+    content: ping,
     embeds: [embed]
   });
 
   console.log(
-    "📢 Announcement posted successfully."
+    "🔴 Shutdown/update announcement posted."
   );
 }
 
 // --------------------------------------------------
-// Roblox update check
+// Update checking
 // --------------------------------------------------
 
 async function checkForUpdate() {
@@ -422,13 +362,15 @@ async function checkForUpdate() {
         loadState();
 
       if (savedState?.game) {
-        previous =
-          savedState.game;
-        previous.thumbnail =
-          savedState.thumbnail;
+        previous = {
+          ...savedState.game,
+          thumbnail:
+            savedState.thumbnail
+        };
       }
     }
 
+    // First run
     if (!previous) {
       previous = {
         ...game,
@@ -449,15 +391,14 @@ async function checkForUpdate() {
       );
 
       console.log(
-        "💾 Initial game state saved."
+        "💾 Initial state saved. No announcement sent."
       );
 
       return;
     }
 
     const oldThumbnail =
-      previous.thumbnail ||
-      null;
+      previous.thumbnail || null;
 
     const changes =
       getChanges(
@@ -467,28 +408,31 @@ async function checkForUpdate() {
         thumbnail
       );
 
-    if (changes.length > 0) {
+    // ------------------------------------------------
+    // IMPORTANT:
+    // Only announce a NEW Roblox update timestamp.
+    // ------------------------------------------------
+
+    const updateTimestampChanged =
+      previous.updated !== game.updated;
+
+    if (
+      updateTimestampChanged &&
+      game.updated
+    ) {
       console.log(
-        "🚨 UPDATE DETECTED!"
+        "🚨 NEW ROBLOX UPDATE DETECTED!"
       );
 
-      for (
-        const change of changes
-      ) {
-        console.log(
-          `   ${change.title}`
-        );
-      }
-
       try {
-        await sendAnnouncement(
+        await sendShutdownAnnouncement(
           game,
           changes,
           thumbnail
         );
       } catch (error) {
         console.error(
-          "❌ Could not send Discord announcement:",
+          "❌ Could not send announcement:",
           error.message
         );
       }
@@ -504,25 +448,43 @@ async function checkForUpdate() {
       );
 
       console.log(
-        "💾 New game state saved."
-      );
-    } else {
-      previous = {
-        ...game,
-        thumbnail
-      };
-
-      saveState(
-        game,
-        thumbnail
+        `💾 Recorded update timestamp: ${game.updated}`
       );
 
       console.log(
-        `✅ No changes detected. Next check in ${
-          POLL_INTERVAL_MS / 1000
-        } seconds.`
+        "⏸️ Duplicate announcements suppressed until the next Roblox update."
       );
+
+      return;
     }
+
+    // Other changes that aren't a new update timestamp
+    if (changes.length > 0) {
+      console.log(
+        "ℹ️ Non-update Roblox data changed:"
+      );
+
+      for (const change of changes) {
+        console.log(
+          `   ${change.title}`
+        );
+      }
+    }
+
+    previous = {
+      ...game,
+      thumbnail
+    };
+
+    saveState(
+      game,
+      thumbnail
+    );
+
+    console.log(
+      "✅ No new Roblox update detected."
+    );
+
   } catch (error) {
     console.error(
       "❌ Update check failed:",
@@ -534,32 +496,26 @@ async function checkForUpdate() {
 }
 
 // --------------------------------------------------
-// Start monitoring
+// Monitoring timer
 // --------------------------------------------------
 
 function startMonitoring() {
   if (updateTimer) {
-    clearInterval(
-      updateTimer
-    );
+    clearInterval(updateTimer);
   }
 
   updateTimer =
-    setInterval(
-      () => {
-        checkForUpdate()
-          .catch(error => {
-            console.error(
-              "🚨 Monitoring loop error:",
-              error
-            );
-          });
-      },
-      POLL_INTERVAL_MS
-    );
+    setInterval(() => {
+      checkForUpdate().catch(error => {
+        console.error(
+          "🚨 Monitoring loop error:",
+          error
+        );
+      });
+    }, POLL_INTERVAL_MS);
 
   console.log(
-    `⏱️ Update monitoring started. Checking every ${
+    `⏱️ Monitoring every ${
       POLL_INTERVAL_MS / 1000
     } seconds.`
   );
@@ -570,26 +526,20 @@ function startMonitoring() {
 // --------------------------------------------------
 
 client.on("ready", () => {
-  lastDiscordReady =
-    Date.now();
-
   console.log(
-    `✅ Discord connection ready: ${client.user.tag}`
-  );
-});
-
-client.on("resume", () => {
-  lastDiscordReady =
-    Date.now();
-
-  console.log(
-    "🔄 Discord connection resumed."
+    `💓 Discord connection ready: ${client.user.tag}`
   );
 });
 
 client.on("reconnecting", () => {
   console.log(
-    "🔌 Discord connection lost. Reconnecting..."
+    "🔌 Discord reconnecting..."
+  );
+});
+
+client.on("resume", () => {
+  console.log(
+    "🔄 Discord connection resumed."
   );
 });
 
@@ -605,9 +555,7 @@ client.on("disconnect", () => {
 
 function startWatchdog() {
   if (watchdogTimer) {
-    clearInterval(
-      watchdogTimer
-    );
+    clearInterval(watchdogTimer);
   }
 
   watchdogTimer =
@@ -616,31 +564,17 @@ function startWatchdog() {
         (
           Date.now() -
           lastSuccessfulCheck
-        ) /
-        60000;
-
-      const minutesSinceDiscord =
-        (
-          Date.now() -
-          lastDiscordReady
-        ) /
-        60000;
+        ) / 60000;
 
       console.log(
         `💓 Watchdog: Discord ${
           client.isReady()
             ? "CONNECTED"
             : "NOT READY"
-        } | Last Roblox check ${minutesSinceCheck.toFixed(
-          1
-        )} min ago`
+        } | Last Roblox check ${
+          minutesSinceCheck.toFixed(1)
+        } min ago`
       );
-
-      /*
-       * If the Roblox checker hasn't successfully
-       * completed for an unusually long time,
-       * run an immediate check.
-       */
 
       if (
         minutesSinceCheck >
@@ -650,36 +584,20 @@ function startWatchdog() {
         )
       ) {
         console.warn(
-          "⚠️ Roblox monitor appears stalled. Running recovery check..."
+          "⚠️ Roblox monitor may be stalled. Running recovery check..."
         );
 
-        checkForUpdate().catch(
-          error => {
-            console.error(
-              "❌ Recovery check failed:",
-              error.message
-            );
-          }
-        );
-      }
-
-      /*
-       * Discord.js normally handles reconnection.
-       * If the client isn't ready, login is retried
-       * after a short delay.
-       */
-
-      if (
-        !client.isReady()
-      ) {
-        console.warn(
-          "⚠️ Discord client is not ready."
-        );
+        checkForUpdate().catch(error => {
+          console.error(
+            "❌ Recovery check failed:",
+            error.message
+          );
+        });
       }
     }, 60000);
 
   console.log(
-    "💓 Discord/Roblox watchdog started."
+    "💓 Watchdog started."
   );
 }
 
@@ -687,30 +605,26 @@ function startWatchdog() {
 // Discord startup
 // --------------------------------------------------
 
-client.once(
-  "ready",
-  async () => {
-    console.log(
-      `✅ Logged in as ${client.user.tag}`
-    );
+client.once("ready", async () => {
+  console.log(
+    `✅ Logged in as ${client.user.tag}`
+  );
 
-    client.user.setActivity(
-      "Reset's Teletubbies 1997",
-      {
-        type:
-          ActivityType.Watching
-      }
-    );
+  client.user.setActivity(
+    "Reset's Teletubbies 1997",
+    {
+      type: ActivityType.Watching
+    }
+  );
 
-    await checkForUpdate();
+  await checkForUpdate();
 
-    startMonitoring();
-    startWatchdog();
-  }
-);
+  startMonitoring();
+  startWatchdog();
+});
 
 // --------------------------------------------------
-// Discord login
+// Login
 // --------------------------------------------------
 
 async function startDiscord() {
@@ -726,17 +640,14 @@ async function startDiscord() {
     console.log(
       "✅ Discord login successful."
     );
+
   } catch (error) {
     console.error(
       "❌ Discord login failed:",
       error.message
     );
 
-    /*
-     * Exit so Render can automatically
-     * restart the service.
-     */
-
+    // Let Render restart the service.
     process.exit(1);
   }
 }
