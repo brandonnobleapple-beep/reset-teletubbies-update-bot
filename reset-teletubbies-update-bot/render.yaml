@@ -1,0 +1,17 @@
+services:
+  - type: worker
+    name: reset-teletubbies-update-bot
+    runtime: node
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: ANNOUNCEMENT_CHANNEL_ID
+        sync: false
+      - key: ROBLOX_UNIVERSE_ID
+        value: "7498394551"
+      - key: PING_ROLE_ID
+        sync: false
+      - key: POLL_INTERVAL_MS
+        value: "300000"
