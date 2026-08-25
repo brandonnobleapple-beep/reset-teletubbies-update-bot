@@ -7,6 +7,7 @@ const {
 
 const fs = require("fs");
 const path = require("path");
+const http = require("http");
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const ANNOUNCEMENT_CHANNEL_ID = process.env.ANNOUNCEMENT_CHANNEL_ID;
@@ -38,7 +39,20 @@ let updateTimer = null;
 let watchdogTimer = null;
 
 let lastSuccessfulCheck = Date.now();
+// --------------------------------------------------
+// Render health server
+// --------------------------------------------------
 
+const PORT = process.env.PORT || 10000;
+
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { "Content-Type": "text/plain" });
+  res.end("Reset's Teletubbies 1997 bot is online.\n");
+});
+
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`🌐 Health server listening on port ${PORT}`);
+});
 // --------------------------------------------------
 // Crash protection
 // --------------------------------------------------
