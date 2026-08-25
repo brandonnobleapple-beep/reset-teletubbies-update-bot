@@ -454,7 +454,8 @@ async function checkForUpdate() {
 }
 
 // Update the Reset's Teletubbies voice channel
-if (UPDATE_VOICE_CHANNEL_ID) {
+console.log("🔊 Voice channel update step reached.");
+      if (UPDATE_VOICE_CHANNEL_ID) {
   try {
     const voiceChannel = await client.channels.fetch(
       UPDATE_VOICE_CHANNEL_ID
