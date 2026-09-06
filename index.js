@@ -80,7 +80,7 @@ function saveState(game, thumbnail) {
 async function getRobloxGame() {
   const url = `https://games.roblox.com/v1/games?universeIds=${encodeURIComponent(ROBLOX_UNIVERSE_ID)}`;
   const response = await fetch(url, {
-    headers: { "User-Agent": "Reset-Teletubbies-Update-Bot/4.0" }
+    headers: { "User-Agent": "Reset-Teletubbies-Update-Bot/5.0" }
   });
 
   if (!response.ok) {
@@ -125,8 +125,8 @@ function getChanges(oldGame, newGame, oldThumbnail, newThumbnail) {
   if (oldGame.updated !== newGame.updated) {
     changes.push({
       type: "updated",
-      title: "🕐 Roblox Game Updated",
-      value: "Roblox reports that the game has been updated."
+      title: "✨ New Game Update",
+      value: "Roblox reports that a new game update is available."
     });
   }
 
@@ -165,7 +165,7 @@ function getChanges(oldGame, newGame, oldThumbnail, newThumbnail) {
   return changes;
 }
 
-async function sendShutdownAnnouncement(game, changes, thumbnailUrl) {
+async function sendTeletubbylandNews(game, changes, thumbnailUrl) {
   const channel = await client.channels.fetch(ANNOUNCEMENT_CHANNEL_ID);
 
   if (!channel || !channel.isTextBased()) {
@@ -177,43 +177,48 @@ async function sendShutdownAnnouncement(game, changes, thumbnailUrl) {
     : null;
 
   const ping = PING_ROLE_ID ? `<@&${PING_ROLE_ID}>` : "";
-  const changeText = changes
-    .map(change => `${change.title}\n${change.value}`)
-    .join("\n\n");
+  const updateChange = changes.find(change => change.type === "updated");
+  const additionalChanges = changes.filter(change => change.type !== "updated");
+
+  let description =
+    "🦁🐻 **Reset's Teletubbies 1997 has something new!**\n\n" +
+    "🌈 A new update has arrived in **Teletubbyland**! Come and see what's new.\n\n";
+
+  if (updateChange) {
+    description += "### ✨ What's New\n" + updateChange.value;
+  }
+
+  if (additionalChanges.length > 0) {
+    description += "\n\n### 🛠️ Other Changes Detected\n" +
+      additionalChanges
+        .map(change => `${change.title}\n${change.value}`)
+        .join("\n\n");
+  }
 
   const embed = new EmbedBuilder()
-    .setTitle("🔴 SERVER SHUTDOWN — Roblox Update Detected")
-    .setDescription(
-      "🦁🐻 **Reset's Teletubbies 1997 has been updated!**\n\n" +
-      "The Roblox game/server may be temporarily unavailable while the new update is being released.\n\n" +
-      "### 📋 Changes Detected\n" +
-      changeText
-    )
+    .setTitle("🌈 SOMETHING NEW IN TELETUBBYLAND!")
+    .setDescription(description)
     .addFields(
       {
-        name: "🕐 Roblox Updated",
+        name: "🕐 Updated",
         value: updatedTimestamp
           ? `<t:${updatedTimestamp}:F>\n(<t:${updatedTimestamp}:R>)`
           : "Unknown",
         inline: true
       },
       {
-        name: "🆔 Universe ID",
-        value: ROBLOX_UNIVERSE_ID,
-        inline: true
-      },
-      {
         name: "🎮 Game",
-        value: `[Play Reset's Teletubbies 1997](${ROBLOX_GAME_URL})`
+        value: `[Play Reset's Teletubbies 1997](${ROBLOX_GAME_URL})`,
+        inline: true
       }
     )
-    .setFooter({ text: "Reset's Teletubbies 1997 Update Monitor" })
+    .setFooter({ text: "Reset's Teletubbies 1997 • Teletubbyland News" })
     .setTimestamp();
 
   if (thumbnailUrl) embed.setThumbnail(thumbnailUrl);
 
   await channel.send({ content: ping, embeds: [embed] });
-  console.log("🔴 Shutdown/update announcement posted.");
+  console.log("🌈 Teletubbyland News announcement posted.");
 }
 
 async function checkForUpdate() {
@@ -249,10 +254,10 @@ async function checkForUpdate() {
     const updateTimestampChanged = previous.updated !== game.updated;
 
     if (updateTimestampChanged && game.updated) {
-      console.log("🚨 NEW ROBLOX UPDATE DETECTED!");
+      console.log("🎉 NEW ROBLOX UPDATE DETECTED!");
 
       try {
-        await sendShutdownAnnouncement(game, changes, thumbnail);
+        await sendTeletubbylandNews(game, changes, thumbnail);
       } catch (error) {
         console.error("❌ Could not send announcement:", error.message);
       }
